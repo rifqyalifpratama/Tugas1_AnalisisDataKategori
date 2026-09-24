@@ -1,0 +1,451 @@
+---
+title: "Tugas 1 — Pengantar Analisis Data Kategori"
+subtitle: "Latihan Analisis Data dengan R dan Quarto"
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+    toc-title: "Daftar Isi"
+    toc-depth: 2
+    toc-location: right
+    code-copy: false
+    code-tools: false
+    number-sections: true
+    embed-resources: true
+    title-block-banner: true
+execute:
+  echo: true
+  warning: false
+  message: false
+lang: id
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# Membaca file identitas tugas
+identitas <- read.csv(
+  "identitas_tugas.csv",
+  stringsAsFactors = FALSE
+)
+
+# Mengambil nama file dataset dari identitas
+file_data <- identitas$file_data[1]
+
+# Membaca dataset utama
+data <- read.csv(
+  file_data,
+  na.strings = c("", "NA"),
+  stringsAsFactors = FALSE
+)
+```
+
+::: {.student-card}
+<div class="label">Mahasiswa</div>
+<div class="value">`r identitas$Nama[1]`</div>
+
+<div class="label">NIM</div>
+<div class="value">`r identitas$NIM[1]`</div>
+
+<div class="label">Kode Tugas</div>
+<div class="value">`r identitas$kode_tugas[1]`</div>
+:::
+
+::: {.learning-box}
+**Tujuan tugas.** Gunakan kembali konsep dan fungsi R yang telah dibahas pada Pertemuan 1
+untuk mengenali struktur data kategori, membuat ringkasan deskriptif, memvisualisasikan data,
+dan menjelaskan insight secara hati-hati.
+:::
+
+::: {.callout-note}
+## Pola kerja
+
+Ikuti pola kelas: **predict → run → inspect → explain**.
+
+Pada setiap bagian diberikan **sedikit petunjuk kode**.  
+Jika diminta menjelaskan atau menuliskan interpretasi, gunakan kotak **Jawaban Anda** yang telah disediakan.
+:::
+
+# 1. Mengenali Data
+
+Gunakan R untuk melihat beberapa baris awal, struktur data, dan nama variabel.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+head(...)
+str(...)
+names(...)
+```
+
+Ganti `...` dengan objek data yang digunakan.
+:::
+
+```{r}
+# Tulis kode Anda di sini
+# Melihat beberapa baris pertama
+head(data)
+
+# Melihat struktur data
+str(data)
+
+# Melihat nama variabel
+names(data)
+```
+
+Lengkapi tabel berikut.
+
+| Variabel | Jenis Variabel | Alasan Singkat |
+|---|---|---|
+| RecordID | Identifier |  Digunakan sebagai identitas unik untuk setiap data/responden|
+| ProgramStudi | Nominal | Berupa kategori program studi dan tidak memiliki urutan |
+| Gender | Nominal | Berupa kategori dan tidak memiliki tingkatan |
+| DeviceUtama |  Nominal | Jenis perangkat merupakan kategori tanpa urutan |
+| ModaBelajar | Nominal | Jenis moda belajar merupakan kategori tanpa tingkatan |
+| Kepuasan | Ordinal | Memiliki tingkatan dari Tidak Puas sampai Sangat Puas |
+| IntensitasBelajar |  Ordinal | Memiliki tingkatan Rendah, Sedang, dan Tinggi |
+| DurasiBelajarJam | Numerik | Menunjukkan jumlah waktu belajar dalam satuan jam |
+
+Jawab singkat:
+
+1. Variabel mana yang merupakan identifier?
+2. Variabel mana yang bersifat ordinal?
+3. Mengapa kode angka belum tentu berarti data numerik?
+
+::: {.answer-box}
+**Jawaban Anda**
+
+1. Variabel yang merupakan identifier adalah RecordID karena digunakan sebagai identitas setiap data.
+
+2. Variabel yang bersifat ordinal adalah Kepuasan dan IntensitasBelajar karena kategorinya memiliki tingkatan atau urutan.
+
+3. Kode angka belum tentu berarti data numerik karena angka dapat digunakan hanya sebagai kode atau label kategori, sehingga tidak selalu dapat dihitung seperti nilai numerik.
+:::
+
+# 2. Menyiapkan Data Kategori
+
+Variabel latihan Anda:
+
+```{r}
+cat("Nominal : DeviceUtama\n")
+cat("Ordinal : Kepuasan\n")
+cat("Urutan  : Tidak Puas | Cukup | Puas | Sangat Puas\n")
+```
+
+Lakukan hal berikut:
+
+1. ubah variabel nominal menjadi factor;
+2. ubah variabel ordinal menjadi ordered factor;
+3. periksa level kategorinya.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+Untuk nominal:
+
+```r
+factor(...)
+levels(...)
+```
+
+Untuk ordinal:
+
+```r
+factor(..., levels = ..., ordered = TRUE)
+```
+:::
+
+```{r}
+nominal_var <- identitas$nominal_utama[1]
+ordinal_var <- identitas$ordinal_utama[1]
+urutan <- strsplit(identitas$urutan_ordinal[1], "\\|")[[1]]
+
+# Mengubah variabel nominal menjadi factor
+data[[nominal_var]] <- factor(data[[nominal_var]])
+
+# Melihat level variabel nominal
+levels(data[[nominal_var]])
+
+# Mengubah variabel ordinal menjadi ordered factor
+data[[ordinal_var]] <- factor(
+  data[[ordinal_var]],
+  levels = urutan,
+  ordered = TRUE
+)
+
+# Melihat level variabel ordinal
+levels(data[[ordinal_var]])
+```
+
+Tuliskan satu kalimat: **mengapa urutan level ordinal perlu ditetapkan dengan benar?**
+
+::: {.answer-box}
+**Jawaban Anda**
+Urutan level ordinal perlu ditetapkan dengan benar agar R dapat mengenali tingkatan kategori sesuai urutan sebenarnya, sehingga data dapat dianalisis dan dibandingkan dengan tepat.
+...
+:::
+
+# 3. Quality Control Awal
+
+Lakukan pemeriksaan sederhana terhadap:
+
+- struktur data;
+- level/kategori;
+- missing value;
+- konsistensi penulisan kategori.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+Beberapa pola fungsi yang dapat digunakan:
+
+```r
+str(...)
+levels(...)
+unique(...)
+is.na(...)
+colSums(...)
+```
+
+Pilih fungsi yang sesuai dengan tujuan pemeriksaan Anda.
+:::
+
+```{r}
+# Tulis kode Anda di sini
+# Melihat struktur data
+str(data)
+
+# Melihat kategori
+unique(data$ProgramStudi)
+unique(data$Gender)
+unique(data$DeviceUtama)
+unique(data$ModaBelajar)
+unique(data$Kepuasan)
+unique(data$IntensitasBelajar)
+
+# Mengecek missing value
+colSums(is.na(data))
+
+# Mengecek frekuensi dan konsistensi kategori
+table(data$ProgramStudi, useNA = "ifany")
+table(data$Gender, useNA = "ifany")
+table(data$DeviceUtama, useNA = "ifany")
+table(data$ModaBelajar, useNA = "ifany")
+table(data$Kepuasan, useNA = "ifany")
+table(data$IntensitasBelajar, useNA = "ifany")
+```
+
+Tuliskan **dua temuan singkat** dari pemeriksaan tersebut.
+
+::: {.answer-box}
+**Jawaban Anda**
+
+1. Terdapat beberapa missing value pada beberapa variabel sehingga perlu diperhatikan dalam proses analisis.
+
+2. Variabel kategorik memiliki beberapa kategori yang berbeda dan perlu diperiksa konsistensi penulisannya sebelum dilakukan analisis lebih lanjut.
+:::
+
+# 4. Frekuensi dan Proporsi
+
+Sebelum menjalankan kode, prediksi:
+
+> Menurut Anda, kategori mana yang paling banyak muncul pada variabel nominal Anda?
+
+::: {.answer-box}
+**Prediksi Anda**
+Saya memprediksi bahwa kategori Smartphone akan menjadi kategori yang paling banyak muncul pada variabel DeviceUtama.
+...
+:::
+
+Setelah itu, buat:
+
+- tabel frekuensi untuk variabel nominal;
+- proporsi untuk variabel ordinal.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+table(...)
+prop.table(...)
+```
+
+Anda dapat menyimpan hasil `table()` ke sebuah objek terlebih dahulu sebelum menghitung proporsi.
+:::
+
+```{r}
+# Tulis kode Anda di sini
+# Membuat tabel frekuensi variabel nominal
+freq_device <- table(data$DeviceUtama, useNA = "ifany")
+
+# Menampilkan frekuensi
+freq_device
+
+# Menghitung proporsi variabel ordinal
+freq_kepuasan <- table(data$Kepuasan, useNA = "ifany")
+
+prop_kepuasan <- prop.table(freq_kepuasan)
+
+# Menampilkan proporsi
+prop_kepuasan
+
+# Menampilkan proporsi dalam persen
+prop_kepuasan * 100
+
+# Kategori DeviceUtama yang paling banyak
+kategori_terbanyak <- names(which.max(freq_device))
+jumlah_terbanyak <- max(freq_device)
+
+kategori_terbanyak
+jumlah_terbanyak
+```
+
+Tuliskan **dua kalimat insight** berdasarkan output.
+
+::: {.answer-box}
+**Interpretasi Anda**
+
+1. Kategori Device Utama yang paling banyak muncul adalah kategori yang memiliki frekuensi terbesar pada tabel.
+
+2. Pada variabel Kepuasan, proporsi masing-masing kategori menunjukkan persentase responden pada setiap tingkat kepuasan.
+:::
+
+# 5. Tabel Silang
+
+Pasangan variabel Anda:
+
+```{r}
+x <- identitas$tab_baris[1]
+y <- identitas$tab_kolom[1]
+
+cat("Baris :", x, "\n")
+cat("Kolom :", y, "\n")
+```
+
+Buat tabel silang untuk kedua variabel tersebut.
+
+Jika diperlukan, tampilkan proporsi per baris untuk membantu membaca pola.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+table(..., ...)
+prop.table(..., margin = 1)
+```
+
+Lengkapi sendiri objek yang diperlukan.
+:::
+
+```{r}
+# Tulis kode Anda di sini
+# Membuat tabel silang
+tabel_silang <- table(
+  data[[x]],
+  data[[y]],
+  useNA = "ifany"
+)
+
+# Menampilkan tabel silang
+tabel_silang
+
+# Menghitung proporsi berdasarkan baris
+proporsi_baris <- prop.table(
+  tabel_silang,
+  margin = 1
+)
+
+# Menampilkan proporsi per baris
+proporsi_baris
+
+# Menampilkan dalam persen
+proporsi_baris * 100
+```
+
+Tuliskan **satu kalimat** yang menjelaskan pola yang tampak.
+
+::: {.answer-box}
+**Interpretasi Anda**
+Distribusi kategori pada setiap baris menunjukkan adanya perbedaan proporsi antar kategori. Pola tersebut dapat dilihat dari persentase masing-masing kategori pada tabel proporsi per baris.
+...
+:::
+
+::: {.callout-important}
+Gunakan bahasa deskriptif. Jangan langsung menyimpulkan adanya hubungan signifikan
+atau sebab-akibat.
+:::
+
+# 6. Visualisasi Kategorik
+
+Variabel yang divisualisasikan:
+
+```{r}
+v <- identitas$visualisasi[1]
+cat("Variabel grafik :", v, "\n")
+```
+
+Buat **satu grafik batang** seperti yang telah dipelajari pada Pertemuan 1.
+
+::: {.callout-tip}
+## Petunjuk kode
+
+```r
+library(ggplot2)
+
+ggplot(..., aes(x = ...)) +
+  geom_bar() +
+  labs(...)
+```
+
+Sesuaikan objek data, variabel, judul, dan label sumbu.
+:::
+
+```{r}
+# Tulis kode Anda di sini
+library(ggplot2)
+
+ggplot(data, aes(x = data[[v]])) +
+  geom_bar() +
+  labs(
+    title = paste("Distribusi", v),
+    x = v,
+    y = "Jumlah Responden"
+  )
+```
+
+Tuliskan **satu kalimat** interpretasi grafik.
+
+::: {.answer-box}
+**Interpretasi Anda**
+Smartphone merupakan perangkat utama yang paling banyak digunakan, yaitu 60 responden, sedangkan Tablet digunakan oleh 13 responden dan terdapat 1 data yang memiliki nilai missing (NA).
+...
+:::
+
+# 7. Kesimpulan
+
+Tuliskan **3 poin kesimpulan singkat** berdasarkan hasil analisis.
+
+Setiap kesimpulan harus:
+
+- didukung oleh output yang telah Anda hasilkan;
+- menggunakan angka yang relevan;
+- ditulis dengan bahasa Anda sendiri;
+- tidak menggunakan klaim sebab-akibat.
+
+::: {.answer-box}
+**Kesimpulan Anda**
+
+1. Smartphone merupakan perangkat utama yang paling banyak digunakan, yaitu sebanyak 60 responden dari 93 responden.
+
+2. Pada tabel silang Gender dan Kepuasan, kategori kepuasan yang paling banyak pada gender L adalah Puas sebanyak 14 responden, sedangkan pada gender P adalah Cukup sebanyak 22 responden.
+
+3. Berdasarkan distribusi kepuasan, kategori Cukup memiliki jumlah responden paling banyak, yaitu 33 responden, diikuti Puas sebanyak 24 responden, Sangat Puas sebanyak 22 responden, dan Tidak Puas sebanyak 13 responden.
+:::
+
+::: {.footer-note}
+**Analisis Data Kategori — Tugas 1**  
+Predict → Run → Inspect → Explain
+:::
