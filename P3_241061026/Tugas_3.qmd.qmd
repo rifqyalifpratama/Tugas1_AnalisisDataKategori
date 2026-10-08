@@ -1,0 +1,305 @@
+---
+title: "Tugas 3 — Uji Chi-Square"
+subtitle: "Observed vs Expected, Test of Independence, Diagnosis Asumsi, dan Pearson Residual"
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+    toc-title: "Daftar Isi"
+    toc-depth: 2
+    toc-location: right
+    code-copy: false
+    code-tools: false
+    number-sections: true
+    embed-resources: true
+    title-block-banner: true
+execute:
+  echo: true
+  warning: false
+  message: false
+lang: id
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+identitas <- read.csv("identitas_tugas.csv", stringsAsFactors = FALSE)
+file_data <- file.path("data", identitas$file_data[1])
+dat <- read.csv(file_data, stringsAsFactors = FALSE)
+```
+
+::: {.student-card}
+<div class="label">Mahasiswa</div>
+<div class="value">`r identitas$Nama[1]`</div>
+
+<div class="label">NIM</div>
+<div class="value">`r identitas$NIM[1]`</div>
+
+<div class="label">Kode Tugas</div>
+<div class="value">`r identitas$kode_tugas[1]`</div>
+:::
+
+::: {.learning-box}
+**Tujuan tugas.** Mengubah pola deskriptif menjadi keputusan inferensial dengan
+Uji Chi-Square, memeriksa *expected count*, membaca Pearson residual, dan
+menulis kesimpulan tanpa klaim kausalitas.
+:::
+
+::: {.callout-note}
+## Pola kerja
+**predict → calculate → run → diagnose → explain**
+:::
+
+
+# Menentukan Jenis Uji dan Hipotesis
+
+Kasus utama pada tugas ini menggunakan dua variabel kategorik:
+
+- `PengalamanCoding`
+- `ToolFavorit`
+
+Pertanyaan penelitian:
+
+> **Apakah tool analitik favorit berasosiasi dengan tingkat pengalaman coding mahasiswa?**
+
+Jawab pertanyaan berikut.
+
+1. Apakah kasus ini termasuk **Goodness of Fit** atau **Test of Independence**?
+2. Tuliskan H₀.
+3. Tuliskan H₁.
+4. Mengapa hasil uji ini tidak boleh langsung ditafsirkan sebagai hubungan sebab-akibat?
+
+::: {.answer-box}
+**Jawaban Anda**
+
+1. Termasuk **Test of Independence**, karena ada dua variabel kategorik (`PengalamanCoding` dan `ToolFavorit`) dari satu sampel yang sama dan yang diuji adalah ada tidaknya hubungan di antara keduanya. Goodness of Fit hanya melibatkan satu variabel yang dibandingkan dengan distribusi teoretis.
+2. H₀: `PengalamanCoding` dan `ToolFavorit` saling independen (tidak ada asosiasi; distribusi tool favorit sama di setiap tingkat pengalaman).
+3. H₁: `PengalamanCoding` dan `ToolFavorit` tidak independen (ada asosiasi; distribusi tool favorit berbeda setidaknya pada satu tingkat pengalaman).
+4. Uji Chi-Square hanya menilai ada tidaknya asosiasi pada data observasional. Uji ini tidak mengontrol faktor lain (misalnya kurikulum, jurusan, atau kebutuhan proyek) dan tidak menentukan arah pengaruh, sehingga tidak dapat membuktikan bahwa pengalaman coding *menyebabkan* pilihan tool (atau sebaliknya).
+:::
+
+
+# Menyiapkan Faktor dan Tabel Observed
+
+Atur urutan kategori agar sesuai dengan konteks analisis.
+
+```{r}
+# Cek ejaan kategori sebelum dijadikan factor
+unique(dat$PengalamanCoding)
+unique(dat$ToolFavorit)
+
+dat$PengalamanCoding <- factor(
+  dat$PengalamanCoding,
+  levels = c("Pemula", "Menengah", "Lanjut")
+)
+
+dat$ToolFavorit <- factor(
+  dat$ToolFavorit,
+  levels = c("Python", "R", "SQL")
+)
+
+# Pastikan tidak ada NA akibat salah ejaan level
+sum(is.na(dat$PengalamanCoding))
+sum(is.na(dat$ToolFavorit))
+
+tab <- table(dat$PengalamanCoding, dat$ToolFavorit)
+addmargins(tab)
+```
+
+Sebelum menjalankan uji, jawab:
+
+1. Berapa dimensi tabel kontingensi?
+2. Berapa *grand total* observasi?
+3. Menurut pengamatan awal terhadap tabel, apakah Anda menduga ada pola perbedaan tool favorit antar tingkat pengalaman? Jelaskan singkat.
+
+::: {.answer-box}
+**Prediksi awal**
+
+1. 3 × 3 (3 tingkat pengalaman × 3 tool favorit).
+2. *Grand total* N = 152 observasi.
+3. Ya, dugaan awal ada perbedaan pola. Python dominan di semua kelompok, tetapi pada kelompok Lanjut hanya 5 dari 42 yang memilih R (sekitar 12%), sedangkan pada kelompok Pemula 20 dari 53 (sekitar 38%) memilih R. Proporsi pemilih Python juga lebih tinggi pada kelompok Menengah dan Lanjut dibanding Pemula.
+:::
+
+
+# Expected Count dan Uji Chi-Square
+
+## Hitung satu expected count secara manual
+
+Pilih satu sel pada tabel kontingensi. Gunakan rumus:
+
+$$
+E_{ij} =
+\frac{(\text{total baris}_i)(\text{total kolom}_j)}{N}
+$$
+
+Tuliskan sel yang dipilih, nilai observed, total baris, total kolom, grand total,
+dan hasil expected count.
+
+::: {.answer-box}
+**Perhitungan manual expected**
+
+- Sel yang dipilih: Lanjut × R
+- Observed $O$: 5
+- Total baris (Lanjut): 42
+- Total kolom (R): 40
+- $N$: 152
+- Expected $E$: $\dfrac{42 \times 40}{152} = \dfrac{1680}{152} \approx 11{,}05$
+:::
+
+## Hitung kontribusi χ² dari sel tersebut
+
+Gunakan:
+
+$$
+\frac{(O-E)^2}{E}
+$$
+
+::: {.answer-box}
+**Kontribusi χ² sel**
+
+$\dfrac{(5 - 11{,}05)^2}{11{,}05} = \dfrac{(-6{,}05)^2}{11{,}05} = \dfrac{36{,}63}{11{,}05} \approx 3{,}31$
+:::
+
+## Jalankan Uji Chi-Square di R
+
+```{r}
+hasil <- chisq.test(tab)
+hasil
+hasil$expected
+
+# Manual untuk sel Lanjut x R, sebagai pembanding
+E_manual <- sum(tab["Lanjut", ]) * sum(tab[, "R"]) / sum(tab)
+E_manual
+(tab["Lanjut", "R"] - E_manual)^2 / E_manual
+
+min(hasil$expected)
+```
+
+Catat:
+
+1. nilai χ²;
+2. derajat kebebasan (*df*);
+3. *p-value*;
+4. minimum expected count.
+
+::: {.answer-box}
+**Hasil uji**
+
+1. χ² = 11,91
+2. df = 4 (yaitu (3 − 1) × (3 − 1))
+3. p-value = 0,018
+4. minimum expected = 8,29 (sel Lanjut × SQL)
+:::
+
+Bandingkan expected count manual Anda dengan sel yang sama pada
+`hasil$expected`.
+
+::: {.answer-box}
+**Pemeriksaan**
+
+Nilainya sama. Expected manual Lanjut × R = 11,05 (1680/152), dan `hasil$expected["Lanjut", "R"]` juga 11,05 (11,0526). Kontribusi χ² sel tersebut (≈ 3,31) juga cocok dengan kuadrat Pearson residualnya ($(-1{,}82)^2 \approx 3{,}31$).
+:::
+
+
+# Diagnosis Asumsi dan Pearson Residual
+
+Sebelum mempercayai *p-value*, lakukan diagnosis.
+
+Jawab:
+
+1. Apakah input yang digunakan berupa **count/frekuensi**, bukan persentase?
+2. Berdasarkan minimum expected count, apakah pendekatan Chi-Square layak digunakan?
+3. Mengapa independensi antarobservasi penting pada uji ini?
+
+::: {.answer-box}
+**Diagnosis asumsi**
+
+1. Ya. `tab` dibentuk dengan `table()` dari data mentah, sehingga selnya berisi frekuensi (count) bulat, bukan persentase atau proporsi.
+2. Layak. Minimum expected count = 8,29, sehingga seluruh sel memiliki E ≥ 5 (tidak ada sel dengan E < 5, apalagi E < 1). Aproksimasi distribusi χ² dapat dipercaya.
+3. Chi-Square mengasumsikan setiap observasi berkontribusi satu kali dan tidak saling memengaruhi. Data ini berisi 152 `RecordID` unik, masing-masing satu responden pada satu sel. Jika observasi saling bergantung (misalnya responden yang sama dihitung berulang atau responden saling meniru jawaban), jumlah informasi efektif lebih kecil dari N, sehingga χ² membesar dan p-value menjadi terlalu kecil (keputusan menolak H₀ terlalu mudah).
+:::
+
+Sekarang periksa Pearson residual.
+
+```{r}
+resid <- hasil$residuals
+round(resid, 3)
+
+# cari residual absolut terbesar
+round(abs(resid), 3)
+which(abs(resid) == max(abs(resid)), arr.ind = TRUE)
+
+# bandingkan observed vs expected pada sel tersebut
+tab["Lanjut", "R"]
+round(hasil$expected["Lanjut", "R"], 2)
+```
+
+Jawab:
+
+1. Sel mana yang memiliki nilai $|\text{Pearson residual}|$ terbesar?
+2. Apakah observed pada sel itu lebih besar atau lebih kecil daripada expected?
+3. Apa arti substantif pola tersebut dalam konteks `PengalamanCoding × ToolFavorit`?
+
+::: {.answer-box}
+**Interpretasi residual**
+
+1. Sel **Lanjut × R**, dengan Pearson residual = −1,82.
+2. Observed (5) lebih **kecil** daripada expected (11,05).
+3. Mahasiswa dengan pengalaman coding Lanjut lebih jarang memilih R sebagai tool favorit dibanding yang diharapkan jika tidak ada asosiasi. Pola searah muncul pada Pemula × R (residual +1,62, lebih banyak dari expected) dan Lanjut × Python (+1,54, lebih banyak dari expected): pemula relatif lebih sering memilih R, sedangkan mahasiswa lanjut cenderung memilih Python. Catatan: tidak ada sel dengan |residual| > 2, sehingga asosiasi berasal dari akumulasi beberapa sel (Pemula, Lanjut × Python/R), bukan satu sel yang sangat ekstrem.
+:::
+
+
+# Fisher sebagai Alternatif
+
+Jawab singkat.
+
+1. Dalam kondisi seperti apa `fisher.test()` layak dipertimbangkan?
+2. Mengapa Fisher sering digunakan pada tabel 2×2 dengan sampel kecil atau expected count sangat rendah?
+3. Apakah dataset utama tugas ini perlu langsung diganti ke Fisher? Jelaskan berdasarkan hasil diagnosis expected count Anda.
+
+::: {.answer-box}
+**Jawaban Anda**
+
+1. Ketika asumsi aproksimasi Chi-Square tidak terpenuhi, yaitu sampel kecil atau banyak sel dengan expected count rendah (misalnya ada E < 5 pada proporsi sel yang besar, atau E < 1).
+2. Fisher menghitung p-value secara *eksak* dari distribusi hipergeometrik dengan margin tetap, sehingga tidak bergantung pada aproksimasi χ² yang menjadi tidak akurat saat expected count kecil. Pada tabel 2×2 perhitungannya sederhana dan langsung.
+3. Tidak perlu. Minimum expected count = 8,29 (≥ 5 pada semua sel), sehingga aproksimasi Chi-Square sudah memadai dan Uji Chi-Square tetap dipakai pada dataset utama.
+:::
+
+
+# Pelaporan dan Kesimpulan
+
+Laporkan hasil utama dengan format:
+
+> **χ²(df, N = n) = nilai, p = nilai**
+
+Kemudian tuliskan **3 kalimat**:
+
+1. keputusan terhadap H₀ dan apakah terdapat bukti asosiasi;
+2. satu pola substantif berdasarkan Pearson residual;
+3. satu kalimat kehati-hatian bahwa hasil menunjukkan **asosiasi**, bukan kausalitas.
+
+::: {.answer-box}
+**Pelaporan akhir**
+
+- χ²(4, N = 152) = 11,91, p = 0,018
+
+1. Pada α = 0,05, H₀ ditolak (p = 0,018 < 0,05), sehingga terdapat bukti statistik adanya asosiasi antara tingkat pengalaman coding dan tool favorit.
+2. Berdasarkan Pearson residual, mahasiswa kelompok Lanjut lebih jarang memilih R daripada yang diharapkan (observed 5 vs expected 11,05; residual −1,82), sementara kelompok Pemula relatif lebih sering memilih R (residual +1,62).
+3. Hasil ini hanya menunjukkan asosiasi pada data observasional, bukan bahwa pengalaman coding menyebabkan pilihan tool tertentu.
+:::
+
+
+::: {.callout-important}
+## Ingat
+- *p-value* bukan probabilitas bahwa H₀ benar.
+- Hasil signifikan tidak otomatis berarti asosiasi kuat.
+- Pearson residual menunjukkan **di mana penyimpangan terjadi**.
+- Kekuatan asosiasi dibahas pada Pertemuan 4.
+:::
+
+::: {.footer-note}
+**Analisis Data Kategori — Tugas 3**  
+Predict → Calculate → Run → Diagnose → Explain
+:::
